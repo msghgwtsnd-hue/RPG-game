@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Skeleton Kingdoms</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+body{margin:0;background:#000;overflow:hidden}
+canvas{image-rendering:pixelated}
+#ui{
+ position:fixed;top:10px;left:10px;
+ color:white;font-family:monospace;
+ background:rgba(0,0,0,.6);
+ padding:8px;border-radius:6px
+}
+</style>
+</head>
+<body>
+
+<div id="ui"></div>
+<canvas id="game"></canvas>
+
+<script>
+// ================= CANVAS =================
+const c=document.getElementById("game");
+const ctx=c.getContext("2d");
+c.width=innerWidth;
+c.height=innerHeight;
+
+// ================= INLINE SPRITES =================
+// Skeleton (player)
+const skelImg = new Image();
+skelImg.src =
+"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAPUlEQVR42mNgwAX+M2BgYGD4z4AEGJiYGBgY/jPgAUZGJgYGBg+M+ABRkYmBgYGz4z4AF8UAGu3QFq5wAAAABJRU5ErkJggg==";
+
+// Enemy
+const enemyImg = new Image();
+enemyImg.src =
+"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAN0lEQVR42mNgYGD4z4AEGBgY/jPgAUZGJgYGBg+M+ABRkYmBgYGz4z4AFW0AG8eQFJ0wAAAABJRU5ErkJggg==";
+
+// NPC
+const npcImg = new Image();
+npcImg.src =
+"data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAQAAAC1+jfqAAAAMUlEQVR42mNgwAX+M2BgYGBg+M+ABRkYmBgYGz4z4AFGRiYGxgYAAAjUgFch9qv3AAAAABJRU5ErkJggg==";
+
+// ================= GAME DATA =================
+let player={
+ x:100,y:200,vx:0,vy:0,
+ hp:100,mana:100,
+ jump:2,ground:false,
+ dash:0,kingdom:0
+};
+
+let enemies=[
+ {x:400,y:200,hp:40},
+ {x:700,y:200,hp:40}
+];
+
+let npcs=[
+ {x:250,y:200,type:"quest"},
+ {x:600,y:200,type:"shop"}
+];
+
+let spells=[];
+let gravity=0.6;
+let keys={};
+
+// ================= INPUT =================
+addEventListener("keydown",e=>keys[e.key]=true);
+addEventListener("keyup",e=>keys[e.key]=false);
+
+// ================= SAVE / LOAD =================
+function save(){
+ localStorage.setItem("skeletonSave",JSON.stringify(player));
+}
+function load(){
+ let d=JSON.parse(localStorage.getItem("skeletonSave"));
+ if(d) player=d;
+}
+load();
+setInterval(save,5000);
+
+// ================= UPDATE =================
+function update(){
+ // Move
+ if(keys["ArrowLeft"]) player.vx=-2;
+ if(keys["ArrowRight"]) player.vx=2;
+ if(!keys["ArrowLeft"]&&!keys["ArrowRight"]) player.vx*=0.8;
+
+ // Jump
+ if(keys["ArrowUp"] && player.jump>0){
+  player.vy=-8;
+  player.jump--;
+  keys["ArrowUp"]=false;
+ }
+
+ // Dash
+ if(keys["Shift"] && player.dash<=0){
+  player.vx*=4;
+  player.dash=40;
+ }
+
+ player.dash--;
+
+ // Gravity
+ player.vy+=gravity;
+ player.x+=player.vx;
+ player.y+=player.vy;
+
+ // Ground
+ if(player.y>200){
+  player.y=200;
+  player.vy=0;
+  player.jump=2;
+ }
+
+ // Magic
+ if(keys["z"] && player.mana>=10){
+  spells.push({x:player.x+16,y:player.y+8});
+  player.mana-=10;
+  keys["z"]=false;
+ }
+
+ // Spells move
+ spells.forEach(s=>s.x+=5);
+
+ // Enemy hit
+ spells.forEach((s,si)=>{
+  enemies.forEach((e,ei)=>{
+   if(Math.abs(s.x-e.x)<16){
+    e.hp-=20;
+    spells.splice(si,1);
+    if(e.hp<=0) enemies.splice(ei,1);
+   }
+  });
+ });
+
+ // Kingdom zones
+ player.kingdom = Math.floor(player.x/800);
+}
+
+// ================= DRAW =================
+function draw(){
+ ctx.fillStyle="#111";
+ ctx.fillRect(0,0,c.width,c.height);
+
+ // Kingdom color
+ ctx.fillStyle=["#224","#242","#422","#244","#442"][player.kingdom%5];
+ ctx.fillRect(0,180,c.width,40);
+
+ // Player
+ ctx.drawImage(skelImg,player.x,player.y-16,32,32);
+
+ // Enemies
+ enemies.forEach(e=>{
+  ctx.drawImage(enemyImg,e.x,e.y-16,32,32);
+ });
+
+ // NPCs
+ npcs.forEach(n=>{
+  ctx.drawImage(npcImg,n.x,n.y-16,32,32);
+ });
+
+ // Spells
+ ctx.fillStyle="#0ff";
+ spells.forEach(s=>ctx.fillRect(s.x,s.y,6,6));
+
+ // UI
+ document.getElementById("ui").innerText=
+  `HP:${player.hp}  Mana:${player.mana}
+Kingdom:${player.kingdom+1}/5
+Arrows=Move  ↑=Jump x2  Shift=Dash  Z=Magic`;
+}
+
+// ================= LOOP =================
+function loop(){
+ update();
+ draw();
+ requestAnimationFrame(loop);
+}
+loop();
+
+addEventListener("resize",()=>{
+ c.width=innerWidth;
+ c.height=innerHeight;
+});
+</script>
+</body>
+</html>
