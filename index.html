@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3D Test</title>
+<style>
+body { margin:0; overflow:hidden; background:#222; }
+</style>
+</head>
+<body>
+
+<script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
+
+<script>
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x88ccff);
+
+const camera = new THREE.PerspectiveCamera(
+  60,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  100
+);
+
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Light
+scene.add(new THREE.AmbientLight(0xffffff, 1));
+
+// Cube
+const cube = new THREE.Mesh(
+  new THREE.BoxGeometry(),
+  new THREE.MeshStandardMaterial({ color: 0xff0000 })
+);
+scene.add(cube);
+
+camera.position.z = 3;
+
+function animate(){
+  requestAnimationFrame(animate);
+  cube.rotation.y += 0.01;
+  cube.rotation.x += 0.01;
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+
+</body>
+</html>
