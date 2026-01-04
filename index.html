@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Skeleton Kingdoms RPG</title>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+
+<style>
+body{margin:0;background:#000;overflow:hidden}
+canvas{display:block;margin:auto;background:#111}
+#ui{
+ position:fixed;top:10px;left:10px;color:white;
+ font-family:monospace;background:rgba(0,0,0,.6);
+ padding:8px;border-radius:6px
+}
+</style>
+</head>
+<body>
+
+<div id="ui">Loading sprites…</div>
+<canvas id="game"></canvas>
+
+<script>
+/* ================= CANVAS ================= */
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+canvas.width=360;
+canvas.height=240;
+
+/* ================= IMAGES ================= */
+const sprites={
+ player:new Image(),
+ enemy:new Image(),
+ npc:new Image(),
+ fire:new Image(),
+ tiles:new Image()
+};
+
+sprites.player.src="https://i.imgur.com/6XKQ4cU.png";   // skeleton
+sprites.enemy.src="https://i.imgur.com/B7a9bYw.png";   // monster
+sprites.npc.src="https://i.imgur.com/8QZ7Z9W.png";     // npc
+sprites.fire.src="https://i.imgur.com/JYUB0m3.png";    // magic
+sprites.tiles.src="https://i.imgur.com/7kceK0M.png";   // ground
+
+let loaded=0;
+Object.values(sprites).forEach(i=>i.onload=()=>loaded++);
+
+/* ================= WORLD ================= */
+let kingdom=0; // 0–4
+const kingdoms=["Bone Realm","Greenwild","Ash Lands","Skyfall","Void Crown"];
+
+/* ================= PLAYER ================= */
+const player={
+ x:160,y:160,w:32,h:32,
+ vx:0,vy:0,
+ onGround:false,
+ hp:100,mana:100,
+ jumps:2
+};
+
+/* ================= ENTITIES ================= */
+const enemies=[{x:260,y:160,hp:40}];
+const npcs=[{x:120,y:160,type:"quest"}];
+const spells=[];
+
+/* ================= INPUT ================= */
+const keys={};
+addEventListener("keydown",e=>keys[e.key]=true);
+addEventListener("keyup",e=>keys[e.key]=false);
+
+/* ================= SAVE ================= */
+function saveGame(){
+ localStorage.setItem("skelSave",JSON.stringify({
+  hp:player.hp,mana:player.mana,kingdom
+ }));
+}
+function loadGame(){
+ const d=JSON.parse(localStorage.getItem("skelSave"));
+ if(!d)return;
+ player.hp=d.hp;player.mana=d.mana;kingdom=d.kingdom;
+}
+loadGame();
+setInterval(saveGame,5000);
+
+/* ================= GAME LOOP ================= */
+function loop(){
+ requestAnimationFrame(loop);
+ if(loaded<5){
+  ctx.fillStyle="white";
+  ctx.fillText("Loading sprites...",120,120);
+  return;
+ }
+
+ /* INPUT */
+ if(keys["ArrowLeft"]) player.vx=-1.5;
+ else if(keys["ArrowRight"]) player.vx=1.5;
+ else player.vx=0;
+
+ if(keys[" "] && player.jumps>0){
+  player.vy=-4;
+  player.jumps--;
+  keys[" "]=false;
+ }
+
+ if(keys["Shift"]){
+  player.vx*=2.5;
+ }
+
+ if(keys["z"] && player.mana>=10){
+  spells.push({x:player.x+16,y:player.y,dir:1});
+  player.mana-=10;
+  keys["z"]=false;
+ }
+
+ /* PHYSICS */
+ player.vy+=0.2;
+ player.x+=player.vx;
+ player.y+=player.vy;
+
+ if(player.y>160){
+  player.y=160;
+  player.vy=0;
+  player.jumps=2;
+ }
+
+ /* SPELLS */
+ spells.forEach((s,i)=>{
+  s.x+=3;
+  enemies.forEach(e=>{
+   if(Math.abs(s.x-e.x)<16){
+    e.hp-=20;
+    spells.splice(i,1);
+   }
+  });
+ });
+
+ /* ENEMIES */
+ enemies.forEach(e=>{
+  if(e.hp>0 && Math.abs(e.x-player.x)<80){
+   e.x+=e.x<player.x?0.3:-0.3;
+  }
+ });
+
+ /* RENDER */
+ ctx.clearRect(0,0,360,240);
+
+ // ground
+ ctx.drawImage(sprites.tiles,0,0,360,240);
+
+ // NPC
+ npcs.forEach(n=>{
+  ctx.drawImage(sprites.npc,n.x,n.y,32,32);
+ });
+
+ // enemies
+ enemies.forEach(e=>{
+  if(e.hp>0)
+   ctx.drawImage(sprites.enemy,e.x,e.y,32,32);
+ });
+
+ // spells
+ spells.forEach(s=>{
+  ctx.drawImage(sprites.fire,s.x,s.y,16,16);
+ });
+
+ // player
+ ctx.drawImage(sprites.player,player.x,player.y,32,32);
+
+ // UI
+ document.getElementById("ui").innerText=
+  `HP:${player.hp} MP:${player.mana}
+${kingdoms[kingdom]}`;
+}
+loop();
+</script>
+</body>
+</html>
