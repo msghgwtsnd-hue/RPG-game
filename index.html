@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>3D RPG – Base Working</title>
+
+<style>
+body { margin:0; overflow:hidden; background:#000; }
+
+/* UI */
+#ui {
+ position:fixed; top:10px; left:10px;
+ color:white; font-family:Arial;
+ background:rgba(0,0,0,.5);
+ padding:8px; border-radius:6px;
+ z-index:10;
+}
+
+/* Joystick */
+#joy {
+ position:fixed; bottom:40px; left:40px;
+ width:120px; height:120px;
+ border-radius:50%;
+ background:rgba(255,255,255,.15);
+ touch-action:none;
+}
+#stick {
+ position:absolute; left:40px; top:40px;
+ width:40px; height:40px;
+ border-radius:50%;
+ background:rgba(255,255,255,.6);
+}
+</style>
+</head>
+
+<body>
+
+<div id="ui">HP:100</div>
+<div id="joy"><div id="stick"></div></div>
+
+<script src="https://unpkg.com/three@0.155.0/build/three.min.js"></script>
+
+<script>
+// ===== SCENE =====
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x87ceeb);
+
+// Camera
+const camera = new THREE.PerspectiveCamera(
+  60,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  200
+);
+
+// Renderer
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// ===== LIGHT =====
+scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+const sun = new THREE.DirectionalLight(0xffffff, 1);
+sun.position.set(10,20,10);
+scene.add(sun);
+
+// ===== GROUND =====
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(300,300),
+  new THREE.MeshStandardMaterial({ color:0x3a7d44 })
+);
+ground.rotation.x = -Math.PI/2;
+scene.add(ground);
+
+// ===== PLAYER (VISIBLE) =====
+const player = new THREE.Mesh(
+  new THREE.CapsuleGeometry(0.4, 1.2, 4, 8),
+  new THREE.MeshStandardMaterial({ color:0xddddff })
+);
+player.position.y = 1;
+scene.add(player);
+
+// ===== CAMERA CONTROL =====
+let yaw = 0;
+let dragging = false;
+let lastX = 0;
+
+window.addEventListener("touchstart", e=>{
+ dragging = true;
+ lastX = e.touches[0].clientX;
+},{passive:false});
+
+window.addEventListener("touchmove", e=>{
+ if(!dragging) return;
+ yaw -= (e.touches[0].clientX - lastX) * 0.005;
+ lastX = e.touches[0].clientX;
+},{passive:false});
+
+window.addEventListener("touchend", ()=> dragging=false);
+window.addEventListener("touchcancel", ()=> dragging=false);
+
+// ===== JOYSTICK =====
+const joy = document.getElementById("joy");
+const stick = document.getElementById("stick");
+let joyVec = {x:0, y:0};
+
+function resetJoy(){
+ joyVec = {x:0,y:0};
+ stick.style.left = "40px";
+ stick.style.top  = "40px";
+}
+
+joy.addEventListener("touchmove", e=>{
+ e.preventDefault();
+ const r = joy.getBoundingClientRect();
+ const x = e.touches[0].clientX - r.left - 60;
+ const y = e.touches[0].clientY - r.top  - 60;
+ const d = Math.min(40, Math.hypot(x,y));
+ const a = Math.atan2(y,x);
+ joyVec.x = Math.cos(a) * d/40;
+ joyVec.y = Math.sin(a) * d/40;
+ stick.style.left = 40 + joyVec.x*40 + "px";
+ stick.style.top  = 40 + joyVec.y*40 + "px";
+},{passive:false});
+
+joy.addEventListener("touchend", resetJoy);
+joy.addEventListener("touchcancel", resetJoy);
+
+// ===== GAME LOOP =====
+function animate(){
+ requestAnimationFrame(animate);
+
+ // Move player
+ const forward = new THREE.Vector3(
+   Math.sin(yaw), 0, Math.cos(yaw)
+ );
+ player.position.add(forward.multiplyScalar(joyVec.y * 0.12));
+ player.rotation.y = yaw;
+
+ // Camera follow
+ camera.position.set(
+   player.position.x + Math.sin(yaw)*6,
+   player.position.y + 4,
+   player.position.z + Math.cos(yaw)*6
+ );
+ camera.lookAt(player.position.x, 1, player.position.z);
+
+ renderer.render(scene, camera);
+}
+animate();
+
+// Resize
+window.addEventListener("resize", ()=>{
+ camera.aspect = window.innerWidth/window.innerHeight;
+ camera.updateProjectionMatrix();
+ renderer.setSize(window.innerWidth, window.innerHeight);
+});
+</script>
+
+</body>
+</html>
