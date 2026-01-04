@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Skeleton RPG – Controls Fixed</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+html,body{
+ margin:0;
+ padding:0;
+ background:#000;
+ overflow:hidden;
+ touch-action:none;
+}
+canvas{display:block}
+
+/* UI */
+#ui{
+ position:fixed;
+ top:10px;
+ left:10px;
+ color:white;
+ font-family:monospace;
+ background:rgba(0,0,0,.6);
+ padding:8px;
+ border-radius:6px;
+ z-index:10;
+}
+
+/* Buttons */
+.btn{
+ position:fixed;
+ bottom:30px;
+ width:70px;
+ height:70px;
+ border-radius:50%;
+ background:rgba(255,255,255,.15);
+ color:white;
+ font-size:20px;
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ user-select:none;
+}
+
+#left{left:20px}
+#right{left:110px}
+#jump{right:110px}
+#magic{right:20px}
+</style>
+</head>
+<body>
+
+<div id="ui"></div>
+
+<div class="btn" id="left">◀</div>
+<div class="btn" id="right">▶</div>
+<div class="btn" id="jump">⬆</div>
+<div class="btn" id="magic">✨</div>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+
+function resize(){
+ canvas.width=innerWidth;
+ canvas.height=innerHeight;
+}
+resize();
+addEventListener("resize",resize);
+
+// ===== PLAYER =====
+const player={
+ x:100,y:200,vx:0,vy:0,
+ hp:100,mana:100,jumps:2
+};
+
+const gravity=0.6;
+const keys={};
+
+// ===== KEYBOARD =====
+addEventListener("keydown",e=>keys[e.key]=true);
+addEventListener("keyup",e=>keys[e.key]=false);
+
+// ===== TOUCH BUTTON HELPER =====
+function hold(btn,fn){
+ btn.addEventListener("touchstart",e=>{
+  e.preventDefault(); fn(true);
+ });
+ btn.addEventListener("touchend",()=>fn(false));
+}
+
+// LEFT / RIGHT
+hold(left,v=>keys.left=v);
+hold(right,v=>keys.right=v);
+
+// JUMP
+jump.addEventListener("touchstart",e=>{
+ e.preventDefault();
+ if(player.jumps>0){
+  player.vy=-9;
+  player.jumps--;
+ }
+});
+
+// MAGIC
+magic.addEventListener("touchstart",e=>{
+ e.preventDefault();
+ if(player.mana>=20){
+  player.mana-=20;
+ }
+});
+
+// ===== GAME LOOP =====
+function update(){
+ // Move
+ if(keys["ArrowLeft"]||keys.left) player.vx=-2.5;
+ if(keys["ArrowRight"]||keys.right) player.vx=2.5;
+ if(!keys["ArrowLeft"]&&!keys["ArrowRight"]&&!keys.left&&!keys.right)
+  player.vx*=0.8;
+
+ // Jump (keyboard)
+ if(keys["ArrowUp"]&&player.jumps>0){
+  player.vy=-9;
+  player.jumps--;
+  keys["ArrowUp"]=false;
+ }
+
+ // Physics
+ player.vy+=gravity;
+ player.x+=player.vx;
+ player.y+=player.vy;
+
+ // Ground
+ if(player.y>200){
+  player.y=200;
+  player.vy=0;
+  player.jumps=2;
+ }
+}
+
+function draw(){
+ ctx.fillStyle="#111";
+ ctx.fillRect(0,0,canvas.width,canvas.height);
+
+ // Ground
+ ctx.fillStyle="#335522";
+ ctx.fillRect(0,230,canvas.width,40);
+
+ // Skeleton sprite
+ ctx.fillStyle="#eee";
+ ctx.fillRect(player.x,player.y-20,10,10);
+ ctx.fillRect(player.x+3,player.y-10,4,15);
+ ctx.fillRect(player.x-4,player.y-5,4,10);
+ ctx.fillRect(player.x+10,player.y-5,4,10);
+ ctx.fillRect(player.x,player.y+5,4,12);
+ ctx.fillRect(player.x+6,player.y+5,4,12);
+
+ // UI
+ ui.innerText=
+ `HP:${player.hp} Mana:${player.mana}
+Touch buttons or arrows`;
+}
+
+function loop(){
+ update();
+ draw();
+ requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
